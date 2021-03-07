@@ -108,8 +108,8 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .build());
 
             context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_COMMENTS_MIN_SEVERITY)
-                                          .category(CoreProperties.CATEGORY_ALM_INTEGRATION)
-                                          .subCategory(CoreProperties.SUBCATEGORY_BRANCHES_AND_PULL_REQUESTS)
+                                          .category(CoreProperties.CATEGORY_GENERAL)
+                                          .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
                                           .onQualifiers(Qualifiers.PROJECT)
                                           .name("Min Comment Severity")
                                           .description("Issues below this level are not attached as file comments.")
