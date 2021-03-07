@@ -84,6 +84,8 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.pipelineId";
     public static final String PULLREQUEST_COMMENTS_MIN_SEVERITY =
             "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.minSeverityComments";
+    public static final String PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED = 
+    		"com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.canFailPipeline";
 
     private static final Logger LOGGER = Loggers.get(GitlabServerPullRequestDecorator.class);
     private static final List<String> OPEN_ISSUE_STATUSES =
@@ -138,6 +140,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
 
             final String prHtmlUrl = analysis.getScannerProperty(PULLREQUEST_GITLAB_PROJECT_URL).map(url -> String.format("%s/merge_requests/%s", url, pullRequestId)).orElse(null);
             final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.MAJOR);
+            final boolean canFailPipeline =  Boolean.parseBoolean(analysis.getScannerProperty(PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED).orElse("true"));
 
             LOGGER.info(String.format("Status url is: %s ", statusUrl));
             LOGGER.info(String.format("PR commits url is: %s ", prCommitsURL));
@@ -178,7 +181,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
 
             BigDecimal coverageValue = analysis.getCoverage().orElse(null);
 
-            postStatus(new StringBuilder(statusUrl), headers, analysis, coverageValue);
+            postStatus(new StringBuilder(statusUrl), headers, analysis, coverageValue, canFailPipeline);
 
             postCommitComment(mergeRequestDiscussionURL, headers, summaryContentParams);
 
@@ -322,10 +325,10 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
     }
 
     private void postStatus(StringBuilder statusPostUrl, Map<String, String> headers, AnalysisDetails analysis,
-                            BigDecimal coverage) throws IOException {
+                            BigDecimal coverage, boolean canFailPipeline) throws IOException {
         //See https://docs.gitlab.com/ee/api/commits.html#post-the-build-status-to-a-commit
         statusPostUrl.append("?name=SonarQube");
-        String status = (analysis.getQualityGateStatus() == QualityGate.Status.OK ? "success" : "failed");
+        String status = (!canFailPipeline || analysis.getQualityGateStatus() == QualityGate.Status.OK ? "success" : "failed");
         statusPostUrl.append("&state=").append(status);
         statusPostUrl.append("&target_url=").append(URLEncoder.encode(String.format("%s/dashboard?id=%s&pullRequest=%s", server.getPublicRootUrl(),
                 URLEncoder.encode(analysis.getAnalysisProjectKey(),

@@ -116,6 +116,16 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .type(PropertyType.SINGLE_SELECT_LIST)
                                           .options(Arrays.stream(Severity.values()).map(Severity::name).collect(Collectors.toList()))
                                           .build());
+
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED)
+                                          .category(CoreProperties.CATEGORY_GENERAL)
+                                          .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+                                          .onQualifiers(Qualifiers.PROJECT)
+                                          .name("Fail pipeline if gate not reached")
+                                          .description("Fail the pipeline if the Qualitiy Gate not passed succesfully.")
+                                          .type(PropertyType.BOOLEAN)
+                                          .defaultValue("true")
+                                          .build());
         }
     }
 
