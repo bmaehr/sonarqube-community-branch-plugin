@@ -126,6 +126,16 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .type(PropertyType.BOOLEAN)
                                           .defaultValue("true")
                                           .build());
+
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULL_REQUEST_COMPACT_COMMENTS_ENABLED)
+                                          .category(CoreProperties.CATEGORY_GENERAL)
+                                          .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+                                          .onQualifiers(Qualifiers.PROJECT)
+                                          .name("Use compact file comments")
+                                          .description("Uses a compact form of the file comments.")
+                                          .type(PropertyType.BOOLEAN)
+                                          .defaultValue("true")
+                                          .build());
         }
     }
 

@@ -86,6 +86,8 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.minSeverityComments";
     public static final String PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED = 
     		"com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.canFailPipeline";
+    public static final String PULL_REQUEST_COMPACT_COMMENTS_ENABLED = 
+    		"com.github.mc1arke.sonarqube.plugin.branch.pullrequest.comments.compact";
 
     private static final Logger LOGGER = Loggers.get(GitlabServerPullRequestDecorator.class);
     private static final List<String> OPEN_ISSUE_STATUSES =
@@ -141,6 +143,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             final String prHtmlUrl = analysis.getScannerProperty(PULLREQUEST_GITLAB_PROJECT_URL).map(url -> String.format("%s/merge_requests/%s", url, pullRequestId)).orElse(null);
             final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.MAJOR);
             final boolean canFailPipeline =  Boolean.parseBoolean(analysis.getScannerProperty(PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED).orElse("true"));
+            final boolean compactCommentsEnabled = Boolean.parseBoolean(analysis.getScannerProperty(PULL_REQUEST_COMPACT_COMMENTS_ENABLED).orElse("true"));
 
             LOGGER.info(String.format("Status url is: %s ", statusUrl));
             LOGGER.info(String.format("PR commits url is: %s ", prCommitsURL));
@@ -189,7 +192,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
                 String path = analysis.getSCMPathForIssue(issue).orElse(null);
                 if (path != null && issue.getIssue().getLine() != null && isPrinted(issue.getIssue().severity(), minSeverity)) {
                     //only if we have a path and line number
-                    String fileComment = analysis.createAnalysisIssueSummary(issue, new MarkdownFormatterFactory());
+                    String fileComment = analysis.createAnalysisIssueSummary(issue, new MarkdownFormatterFactory(), compactCommentsEnabled);
 
                     if (scmInfoRepository.getScmInfo(issue.getComponent())
                             .filter(i -> i.hasChangesetForLine(issue.getIssue().getLine()))
