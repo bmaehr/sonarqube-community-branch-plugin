@@ -13,3 +13,12 @@
 
 #Project libs
 /sonarqube-lib/
+
+#Eclipse
+bin/
+.classpath
+.project
+.settings/
+
+#Patches
+patch-*
