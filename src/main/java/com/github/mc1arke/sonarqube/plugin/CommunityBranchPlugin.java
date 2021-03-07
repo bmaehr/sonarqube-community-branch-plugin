@@ -20,6 +20,7 @@ package com.github.mc1arke.sonarqube.plugin;
 
 import com.github.mc1arke.sonarqube.plugin.ce.CommunityBranchEditionProvider;
 import com.github.mc1arke.sonarqube.plugin.ce.CommunityReportAnalysisComponentProvider;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.gitlab.GitlabServerPullRequestDecorator;
 import com.github.mc1arke.sonarqube.plugin.scanner.CommunityBranchConfigurationLoader;
 import com.github.mc1arke.sonarqube.plugin.scanner.CommunityBranchParamsValidator;
 import com.github.mc1arke.sonarqube.plugin.scanner.CommunityProjectBranchesLoader;
@@ -36,6 +37,10 @@ import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.action.SetGithu
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.action.SetGitlabBindingAction;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.action.CreateBitbucketCloudAction;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.action.UpdateBitbucketCloudAction;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 import org.sonar.api.CoreProperties;
 import org.sonar.api.Plugin;
 import org.sonar.api.PropertyType;
@@ -44,6 +49,7 @@ import org.sonar.api.config.PropertyDefinition;
 import org.sonar.api.resources.Qualifiers;
 import org.sonar.core.config.PurgeConstants;
 import org.sonar.core.extension.CoreExtension;
+import org.sonarqube.ws.Common.Severity;
 
 /**
  * @author Michael Clarke
@@ -101,6 +107,15 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .type(PropertyType.STRING)
                                           .build());
 
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_COMMENTS_MIN_SEVERITY)
+                                          .category(CoreProperties.CATEGORY_ALM_INTEGRATION)
+                                          .subCategory(CoreProperties.SUBCATEGORY_BRANCHES_AND_PULL_REQUESTS)
+                                          .onQualifiers(Qualifiers.PROJECT)
+                                          .name("Min Comment Severity")
+                                          .description("Issues below this level are not attached as file comments.")
+                                          .type(PropertyType.SINGLE_SELECT_LIST)
+                                          .options(Arrays.stream(Severity.values()).map(Severity::name).collect(Collectors.toList()))
+                                          .build());
         }
     }
 

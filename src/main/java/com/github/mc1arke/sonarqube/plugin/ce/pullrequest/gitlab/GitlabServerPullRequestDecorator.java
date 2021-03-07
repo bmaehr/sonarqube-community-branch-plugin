@@ -55,6 +55,7 @@ import org.sonar.ce.task.projectanalysis.scm.ScmInfoRepository;
 import org.sonar.db.alm.setting.ALM;
 import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.db.alm.setting.ProjectAlmSettingDto;
+import org.sonarqube.ws.Common.Severity;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -81,6 +82,8 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             "sonar.pullrequest.gitlab.projectUrl";
     public static final String PULLREQUEST_GITLAB_PIPELINE_ID =
             "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.pipelineId";
+    public static final String PULLREQUEST_COMMENTS_MIN_SEVERITY =
+            "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.gitlab.minSeverityComments";
 
     private static final Logger LOGGER = Loggers.get(GitlabServerPullRequestDecorator.class);
     private static final List<String> OPEN_ISSUE_STATUSES =
@@ -134,6 +137,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             final String mergeRequestDiscussionURL = mergeRequestURl + "/discussions";
 
             final String prHtmlUrl = analysis.getScannerProperty(PULLREQUEST_GITLAB_PROJECT_URL).map(url -> String.format("%s/merge_requests/%s", url, pullRequestId)).orElse(null);
+            final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.MAJOR);
 
             LOGGER.info(String.format("Status url is: %s ", statusUrl));
             LOGGER.info(String.format("PR commits url is: %s ", prCommitsURL));
@@ -180,7 +184,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
 
             for (PostAnalysisIssueVisitor.ComponentIssue issue : openIssues) {
                 String path = analysis.getSCMPathForIssue(issue).orElse(null);
-                if (path != null && issue.getIssue().getLine() != null) {
+                if (path != null && issue.getIssue().getLine() != null && isPrinted(issue.getIssue().severity(), minSeverity)) {
                     //only if we have a path and line number
                     String fileComment = analysis.createAnalysisIssueSummary(issue, new MarkdownFormatterFactory());
 
@@ -374,4 +378,12 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
         }
         return Optional.empty();
     }
+    
+    protected boolean isPrinted(String severity, Severity minSeverity) {
+        if (StringUtils.isBlank(severity)) {
+            return true;
+        }
+        return Severity.valueOf(severity).getNumber() >= minSeverity.getNumber();
+    }
+
 }
