@@ -204,7 +204,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
     private void doFileComments(AnalysisDetails analysis, MergeRequest mergeRequest, Map<String, String> headers,
             final String commitsUrl, final String discussionsUrl, Map<String, Note> lineNotes) throws IOException {
         final boolean fileCommentEnabled = Boolean.parseBoolean(analysis.getScannerProperty(PULL_REQUEST_FILE_COMMENT_ENABLED).orElse("true"));
-        final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.MAJOR);
+        final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.INFO);
         final boolean compactCommentsEnabled = Boolean.parseBoolean(analysis.getScannerProperty(PULL_REQUEST_COMPACT_COMMENTS_ENABLED).orElse("true"));
 		if (fileCommentEnabled) {
             DiffRefs diffRefs = mergeRequest.getDiffRefs();
