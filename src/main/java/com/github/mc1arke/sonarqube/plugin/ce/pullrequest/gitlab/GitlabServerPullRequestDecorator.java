@@ -137,7 +137,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
             final String mergeRequestDiscussionURL = mergeRequestURl + "/discussions";
 
             final String prHtmlUrl = analysis.getScannerProperty(PULLREQUEST_GITLAB_PROJECT_URL).map(url -> String.format("%s/merge_requests/%s", url, pullRequestId)).orElse(null);
-            final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.MAJOR);
+            final Severity minSeverity = analysis.getScannerProperty(PULLREQUEST_COMMENTS_MIN_SEVERITY).map(Severity::valueOf).orElse(Severity.INFO);
 
             LOGGER.info(String.format("Status url is: %s ", statusUrl));
             LOGGER.info(String.format("PR commits url is: %s ", prCommitsURL));
