@@ -107,15 +107,6 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .type(PropertyType.STRING)
                                           .build());
 
-            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_COMMENTS_MIN_SEVERITY)
-                                          .category(CoreProperties.CATEGORY_GENERAL)
-                                          .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
-                                          .onQualifiers(Qualifiers.PROJECT)
-                                          .name("Min Comment Severity")
-                                          .description("Issues below this level are not attached as file comments.")
-                                          .type(PropertyType.SINGLE_SELECT_LIST)
-                                          .options(Arrays.stream(Severity.values()).map(Severity::name).collect(Collectors.toList()))
-                                          .build());
 
             context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED)
                                           .category(CoreProperties.CATEGORY_GENERAL)
@@ -127,6 +118,36 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .defaultValue("true")
                                           .build());
 
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULL_REQUEST_COMMENT_SUMMARY_ENABLED)
+						                    .category(CoreProperties.CATEGORY_GENERAL)
+						                    .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+						                    .onQualifiers(Qualifiers.PROJECT)
+						                    .name("Enable summary comment")
+						                    .description("This enables the summary comment (if implemented).")
+						                    .type(PropertyType.BOOLEAN)
+						                    .defaultValue("true")
+						                    .build());
+
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULL_REQUEST_FILE_COMMENT_ENABLED)
+						                    .category(CoreProperties.CATEGORY_GENERAL)
+						                    .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+						                    .onQualifiers(Qualifiers.PROJECT)
+						                    .name("Enable file comment")
+						                    .description("This enables commenting (if implemented).")
+						                    .type(PropertyType.BOOLEAN)
+						                    .defaultValue("true")
+						                    .build());
+
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULLREQUEST_COMMENTS_MIN_SEVERITY)
+						                    .category(CoreProperties.CATEGORY_GENERAL)
+						                    .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+						                    .onQualifiers(Qualifiers.PROJECT)
+						                    .name("Min Comment Severity")
+						                    .description("Issues below this level are not attached as file comments.")
+						                    .type(PropertyType.SINGLE_SELECT_LIST)
+						                    .options(Arrays.stream(Severity.values()).map(Severity::name).collect(Collectors.toList()))
+						                    .build());
+
             context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULL_REQUEST_COMPACT_COMMENTS_ENABLED)
                                           .category(CoreProperties.CATEGORY_GENERAL)
                                           .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
@@ -136,6 +157,16 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .type(PropertyType.BOOLEAN)
                                           .defaultValue("true")
                                           .build());
+            
+            context.addExtensions(PropertyDefinition.builder(GitlabServerPullRequestDecorator.PULL_REQUEST_DELETE_COMMENTS_ENABLED)
+						                    .category(CoreProperties.CATEGORY_GENERAL)
+						                    .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
+						                    .onQualifiers(Qualifiers.PROJECT)
+						                    .name("Enable deleting comments")
+						                    .description("This cleans up the comments from previous runs (if implemented).")
+						                    .type(PropertyType.BOOLEAN)
+						                    .defaultValue("false")
+						                    .build());
         }
     }
 

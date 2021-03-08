@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Optional;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.created;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -47,6 +48,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -171,6 +173,10 @@ public class GitlabServerPullRequestDecoratorTest {
                         urlEncode("position[new_line]") + "=" + lineNumber + "&" +
                         urlEncode("position[position_type]") + "=text"))
                 .willReturn(created()));
+
+        wireMockRule.stubFor(put(urlPathEqualTo("/api/v4/projects/" + urlEncode(repositorySlug) + "/merge_requests/" + branchName + "/discussions/" + discussionId + "/notes/" + noteId))
+                .withRequestBody(equalTo("body=summary"))
+                .willReturn(ok()));
 
         Server server = mock(Server.class);
         when(server.getPublicRootUrl()).thenReturn(sonarRootUrl);
