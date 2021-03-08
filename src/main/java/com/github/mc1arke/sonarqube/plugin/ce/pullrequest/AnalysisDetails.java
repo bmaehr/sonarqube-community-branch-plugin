@@ -240,7 +240,7 @@ public class AnalysisDetails {
             document = new Document(
                 new Paragraph(new Text(String.format("**Type:** %s ", issue.type().name())), new Image(issue.type().name(), String.format("%s/checks/IssueType/%s.svg?sanitize=true", baseImageUrl, issue.type().name().toLowerCase()))),
                 new Paragraph(new Text(String.format("**Severity:** %s ", issue.severity())), new Image(issue.severity(), String.format("%s/checks/Severity/%s.svg?sanitize=true", baseImageUrl, issue.severity().toLowerCase()))),
-                new Paragraph(new Text(String.format("**Message:** %s", issue.getMessage()))),
+                new Text(String.format("**Message:** %s %s", issue.getRuleKey(), issue.getMessage())),
                 effortNode,
                 resolutionNode,
                 new Link(getIssueUrl(issue.key()), new Text("View in SonarQube"))
