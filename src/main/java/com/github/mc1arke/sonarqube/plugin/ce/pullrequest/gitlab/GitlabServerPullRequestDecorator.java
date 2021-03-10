@@ -447,7 +447,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
                             BigDecimal coverage, boolean canFailPipeline) throws IOException {
         //See https://docs.gitlab.com/ee/api/commits.html#post-the-build-status-to-a-commit
         statusPostUrl.append("?name=SonarQube");
-        String status = (!canFailPipeline || analysis.getQualityGateStatus() == QualityGate.Status.OK ? "success" : "failed");
+        String status = (!canFailPipeline || analysis.getQualityGateStatus() == QualityGate.Status.OK) ? "success" : "failed";
         statusPostUrl.append("&state=").append(status);
         statusPostUrl.append("&target_url=").append(URLEncoder.encode(String.format("%s/dashboard?id=%s&pullRequest=%s", server.getPublicRootUrl(),
                 URLEncoder.encode(analysis.getAnalysisProjectKey(),
@@ -460,6 +460,8 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
         }
         analysis.getScannerProperty(PULLREQUEST_GITLAB_PIPELINE_ID).ifPresent(pipelineId -> statusPostUrl.append("&pipeline_id=").append(pipelineId));
 
+        LOGGER.info("Posting with headers {} to {}", headers, statusPostUrl);
+        
         HttpPost httpPost = new HttpPost(statusPostUrl.toString());
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             httpPost.addHeader(entry.getKey(), entry.getValue());
