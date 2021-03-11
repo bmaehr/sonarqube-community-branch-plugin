@@ -18,8 +18,10 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest.gitlab;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.AnalysisDetails;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.DecorationResult;
@@ -261,7 +263,9 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
         final boolean summaryCommentEnabled = Boolean.parseBoolean(analysis.getScannerProperty(PULL_REQUEST_COMMENT_SUMMARY_ENABLED).orElse("true"));
 		if (summaryCommentEnabled) {
 		    String summaryCommentBody = analysis.createAnalysisSummary(new MarkdownFormatterFactory());
+		    String id = null;
 		    if (summaryComment!=null) {
+		    	id = summaryComment.getDiscussionId();
                 try {
                     updateCommitComment(discussionsUrl,  summaryComment.getDiscussionId(), summaryComment.getId(), headers, summaryCommentBody);							
                 } catch (IOException ex) {
@@ -270,19 +274,22 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
 		    } else {
 			    List<NameValuePair> summaryContentParams = Collections.singletonList(new BasicNameValuePair("body", summaryCommentBody));
 			    try {
-			        postCommitComment(discussionsUrl, headers, summaryContentParams);
+			    	Discussion diskussion = postCommitComment(discussionsUrl, headers, summaryContentParams);
+			        if (diskussion != null) {
+			        	id = diskussion.getId();
+			        }
 			    } catch (IOException ex) {
 			    	LOGGER.error("Can't post summary comment to '{}'.", discussionsUrl);
 			    }
 		    }
 		    boolean approved = analysis.getQualityGateStatus() == QualityGate.Status.OK;
-		    if (approved) {
-		    	// TODO resolve by post to /merge_requests/1114/discussions/c4bbff952a9d3f5250f432e9cfeaf24bfe9ebb2a/resolve 
+		    if (approved && StringUtils.isNotBlank(id)) {
+		    	resolve(headers, discussionsUrl, id);
 		    }
 		}
 	}
 
-    private void doPipeline(AnalysisDetails analysis, Map<String, String> headers, final String statusUrl) throws IOException {
+	private void doPipeline(AnalysisDetails analysis, Map<String, String> headers, final String statusUrl) throws IOException {
         final boolean canFailPipeline =  Boolean.parseBoolean(analysis.getScannerProperty(PULLREQUEST_CAN_FAIL_PIPELINE_ENABLED).orElse("true"));
         BigDecimal coverageValue = analysis.getCoverage().orElse(null);
         postStatus(new StringBuilder(statusUrl), headers, analysis, coverageValue, canFailPipeline);
@@ -341,13 +348,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
                         "An error was returned in the response from the Gitlab API. See the previous log messages for details");
             } else if (null != httpResponse) {
                 LOGGER.debug(httpResponse.toString());
-                HttpEntity entity = httpResponse.getEntity();
-                X result = new ObjectMapper()
-                    .configure(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT, true)
-                    .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
-                    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                    .readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
-
+                X result = mapEntity(httpResponse, type);
                 LOGGER.info(type + " received");
 
                 return result;
@@ -374,12 +375,7 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
                 throw new IllegalStateException("An error was returned in the response from the Gitlab API. See the previous log messages for details");
             } else if (null != httpResponse) {
                 LOGGER.debug(httpResponse.toString());
-                HttpEntity entity = httpResponse.getEntity();
-                List<X> pagedResults = new ObjectMapper()
-                        .configure(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT, true)
-                        .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
-                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                        .readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
+                List<X> pagedResults = mapEntitys(type, httpResponse);
                 result.addAll(pagedResults);
                  Optional<String> nextURL = getNextUrl(httpResponse);
                 if (nextURL.isPresent()) {
@@ -409,9 +405,10 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
         }
     }
 
-    private void postCommitComment(String commitCommentUrl, Map<String, String> headers, List<NameValuePair> params) throws IOException {
+    private Discussion postCommitComment(String commitCommentUrl, Map<String, String> headers, List<NameValuePair> params) throws IOException {
         //https://docs.gitlab.com/ee/api/commits.html#post-comment-to-commit
-        HttpPost httpPost = new HttpPost(commitCommentUrl);
+    	Discussion result = null;
+    	HttpPost httpPost = new HttpPost(commitCommentUrl);
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             httpPost.addHeader(entry.getKey(), entry.getValue());
         }
@@ -421,8 +418,9 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
 
         try (CloseableHttpClient httpClient = HttpClients.createSystem()) {
             HttpResponse httpResponse = httpClient.execute(httpPost);
-            validateGitlabResponse(httpResponse, 201, "Comment posted");
+            result = validateGitlabResponse(httpResponse, 201, "Comment posted", Discussion.class);
         }
+        return result;
     }
     
     private void updateCommitComment(String commitCommentUrl, String discussionId, long noteId, Map<String, String> headers, String body) throws IOException {
@@ -442,6 +440,23 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
         }
         
     }
+    
+    private void resolve(Map<String, String> headers, String discussionsUrl, String discussionId) throws IOException {
+    	// resolve by post to https://gitlab.example.com/api/v4/projects/5/merge_requests/11/discussions/6a9c1750b37d513a43987b574953fceb50b03ce7?resolved=true
+        String resolveCommentUrl = discussionsUrl + "/" + discussionId + "?resolved=true";
+        HttpPut httpPut = new HttpPut(resolveCommentUrl);
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            httpPut.addHeader(entry.getKey(), entry.getValue());
+        }
+
+        LOGGER.info("Resolving discussion with headers {} to {}",  headers, resolveCommentUrl);
+
+        try (CloseableHttpClient httpClient = HttpClients.createSystem()) {
+            HttpResponse httpResponse = httpClient.execute(httpPut);
+            validateGitlabResponse(httpResponse, 200, "Discussion resolved");
+        }
+		
+	}
 
     private void postStatus(StringBuilder statusPostUrl, Map<String, String> headers, AnalysisDetails analysis,
                             BigDecimal coverage, boolean canFailPipeline) throws IOException {
@@ -473,21 +488,63 @@ public class GitlabServerPullRequestDecorator implements PullRequestBuildStatusD
                 // Workaround for https://gitlab.com/gitlab-org/gitlab-ce/issues/25807
                 LOGGER.debug("Transition status is already {}", status);
             } else {
-                validateGitlabResponse(httpResponse, 201, "Comment posted");
+                validateGitlabResponse(httpResponse, 201, "Status posted");
             }
         }
     }
 	
     private void validateGitlabResponse(HttpResponse httpResponse, int expectedStatus, String successLogMessage) throws IOException {
-        if (null != httpResponse && httpResponse.getStatusLine().getStatusCode() != expectedStatus) {
+    	validateGitlabResponse(httpResponse, expectedStatus, successLogMessage, null);
+    }
+
+    private <X> X validateGitlabResponse(HttpResponse httpResponse, int expectedStatus, String successLogMessage, Class<X> type) throws IOException {
+        X result = null;
+    	if (null != httpResponse && httpResponse.getStatusLine().getStatusCode() != expectedStatus) {
             LOGGER.error(httpResponse.toString());
             LOGGER.error(EntityUtils.toString(httpResponse.getEntity(), StandardCharsets.UTF_8));
             throw new IllegalStateException("An error was returned in the response from the Gitlab API. See the previous log messages for details");
         } else if (null != httpResponse) {
-            LOGGER.debug(httpResponse.toString());
-            LOGGER.info(successLogMessage);
+            LOGGER.info(successLogMessage + ": {}", httpResponse.getEntity());
+            if (type != null) {
+            	result = mapEntity(httpResponse, type);
+            }
         }
+    	return result;
+        }
+    
+	private <X> X mapEntity(HttpResponse httpResponse, Class<X> type) throws IOException {
+		HttpEntity entity = httpResponse.getEntity();
+		return getMapper().readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
+	}
+
+	private <X> List<X> mapEntitys(TypeReference<List<X>> type, HttpResponse httpResponse) throws IOException {
+		HttpEntity entity = httpResponse.getEntity();
+		return getMapper().readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
+	}
+
+	private ObjectMapper getMapper() {
+		return new ObjectMapper()
+		    .configure(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT, true)
+		    .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
+		    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
+    
+	private <X> X mapEntity(HttpResponse httpResponse, Class<X> type) throws IOException {
+		HttpEntity entity = httpResponse.getEntity();
+		return getMapper().readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
+	}
+
+	private <X> List<X> mapEntitys(TypeReference<List<X>> type, HttpResponse httpResponse) throws IOException {
+		HttpEntity entity = httpResponse.getEntity();
+		return getMapper().readValue(IOUtils.toString(entity.getContent(), StandardCharsets.UTF_8), type);
+	}
+
+	private ObjectMapper getMapper() {
+		return new ObjectMapper()
+		    .configure(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT, true)
+		    .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
+		    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+	}
 
     private static Optional<String> getNextUrl(HttpResponse httpResponse) {
         Header linkHeader = httpResponse.getFirstHeader("Link");
